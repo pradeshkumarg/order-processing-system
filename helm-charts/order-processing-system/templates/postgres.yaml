@@ -1,0 +1,103 @@
+{{- if .Values.infrastructure.postgres.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-config
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: postgres
+    app.kubernetes.io/name: {{ .Chart.Name }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+data:
+  POSTGRES_DB: {{ .Values.infrastructure.postgres.env.POSTGRES_DB }}
+  POSTGRES_USER: {{ .Values.infrastructure.postgres.env.POSTGRES_USER }}
+  POSTGRES_PASSWORD: {{ .Values.infrastructure.postgres.env.POSTGRES_PASSWORD }}
+---
+{{- if .Values.infrastructure.postgres.persistence.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-pvc
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: postgres
+    app.kubernetes.io/name: {{ .Chart.Name }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: {{ .Values.infrastructure.postgres.persistence.size }}
+  {{- if .Values.infrastructure.postgres.persistence.storageClass }}
+  storageClassName: {{ .Values.infrastructure.postgres.persistence.storageClass }}
+  {{- end }}
+{{- end }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: postgres
+    app.kubernetes.io/name: {{ .Chart.Name }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      {{- with .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: postgres
+          image: "{{ .Values.infrastructure.postgres.image.repository }}:{{ .Values.infrastructure.postgres.image.tag }}"
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          ports:
+            - containerPort: 5432
+          envFrom:
+            - configMapRef:
+                name: postgres-config
+          resources:
+            {{- toYaml .Values.infrastructure.postgres.resources | nindent 12 }}
+          {{- if .Values.infrastructure.postgres.persistence.enabled }}
+          volumeMounts:
+            - name: postgres-data
+              mountPath: /var/lib/postgresql/data
+          {{- end }}
+      {{- if .Values.infrastructure.postgres.persistence.enabled }}
+      volumes:
+        - name: postgres-data
+          persistentVolumeClaim:
+            claimName: postgres-pvc
+      {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: postgres
+    app.kubernetes.io/name: {{ .Chart.Name }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+spec:
+  selector:
+    app: postgres
+  ports:
+    - port: {{ .Values.infrastructure.postgres.service.port }}
+      targetPort: 5432
+  type: {{ .Values.infrastructure.postgres.service.type }}
+{{- end }}

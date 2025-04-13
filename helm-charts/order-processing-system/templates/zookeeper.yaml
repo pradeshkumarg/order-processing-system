@@ -1,0 +1,57 @@
+{{- if .Values.infrastructure.zookeeper.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: zookeeper
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: zookeeper
+    app.kubernetes.io/name: {{ .Chart.Name }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: zookeeper
+  template:
+    metadata:
+      labels:
+        app: zookeeper
+    spec:
+      {{- with .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: zookeeper
+          image: "{{ .Values.infrastructure.zookeeper.image.repository }}:{{ .Values.infrastructure.zookeeper.image.tag }}"
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          ports:
+            - containerPort: 2181
+          env:
+            - name: ZOOKEEPER_CLIENT_PORT
+              value: "2181"
+            - name: ZOOKEEPER_TICK_TIME
+              value: "2000"
+          resources:
+            {{- toYaml .Values.infrastructure.zookeeper.resources | nindent 12 }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: zookeeper
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: zookeeper
+    app.kubernetes.io/name: {{ .Chart.Name }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+spec:
+  selector:
+    app: zookeeper
+  ports:
+    - port: {{ .Values.infrastructure.zookeeper.service.port }}
+      targetPort: 2181
+  type: {{ .Values.infrastructure.zookeeper.service.type }}
+{{- end }}

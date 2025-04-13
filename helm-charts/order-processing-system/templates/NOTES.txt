@@ -1,0 +1,33 @@
+Thank you for installing {{ .Chart.Name }}.
+
+Your release is named {{ .Release.Name }}.
+
+To learn more about the release, try:
+
+  $ helm status {{ .Release.Name }}
+  $ helm get all {{ .Release.Name }}
+
+To access the services:
+
+1. Order Service:
+   $ kubectl port-forward -n {{ .Values.global.namespace }} svc/order-service {{ .Values.services.orderService.service.port }}:{{ .Values.services.orderService.service.port }}
+   Then access: http://localhost:{{ .Values.services.orderService.service.port }}/swagger-ui.html
+
+2. Inventory Service:
+   $ kubectl port-forward -n {{ .Values.global.namespace }} svc/inventory-service {{ .Values.services.inventoryService.service.port }}:{{ .Values.services.inventoryService.service.port }}
+   Then access: http://localhost:{{ .Values.services.inventoryService.service.port }}/swagger-ui.html
+
+3. Notification Service:
+   $ kubectl port-forward -n {{ .Values.global.namespace }} svc/notification-service {{ .Values.services.notificationService.service.port }}:{{ .Values.services.notificationService.service.port }}
+   Then access: http://localhost:{{ .Values.services.notificationService.service.port }}/swagger-ui.html
+
+4. Analytics Service:
+   $ kubectl port-forward -n {{ .Values.global.namespace }} svc/analytics-service {{ .Values.services.analyticsService.service.port }}:{{ .Values.services.analyticsService.service.port }}
+   Then access: http://localhost:{{ .Values.services.analyticsService.service.port }}/swagger-ui.html
+
+5. Kafka UI:
+   $ kubectl port-forward -n {{ .Values.global.namespace }} svc/kafka-ui {{ .Values.infrastructure.kafkaUI.service.port }}:{{ .Values.infrastructure.kafkaUI.service.port }}
+   Then access: http://localhost:{{ .Values.infrastructure.kafkaUI.service.port }}
+
+To run the API tests:
+   $ cd api-tests && ./run-api-tests.sh

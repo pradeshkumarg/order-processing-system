@@ -1,0 +1,93 @@
+{{- if .Values.dependencies.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: dependency-controller
+  namespace: {{ .Values.global.namespace }}
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-weight": "-2"
+    "helm.sh/hook-delete-policy": hook-succeeded,before-hook-creation
+  labels:
+    app.kubernetes.io/name: {{ .Chart.Name }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+spec:
+  ttlSecondsAfterFinished: 10
+  template:
+    metadata:
+      name: dependency-controller
+    spec:
+      serviceAccountName: dependency-controller
+      restartPolicy: Never
+      containers:
+      - name: dependency-controller
+        image: bitnami/kubectl:latest
+        command:
+        - /bin/bash
+        - -c
+        - |
+          echo "Dependency Controller starting..."
+
+          # Wait for database initialization job to complete
+          echo "Waiting for database initialization job to complete..."
+          kubectl wait --for=condition=complete job/db-init-job --timeout=300s
+
+          # Wait for infrastructure-ready job to complete
+          echo "Waiting for infrastructure-ready job to complete..."
+          kubectl wait --for=condition=complete job/infrastructure-ready --timeout=300s
+
+          # Apply annotations to deployments
+          echo "Applying annotations to deployments..."
+
+          # Order Service
+          echo "Starting Order Service..."
+          kubectl annotate deployment order-service dependencies.helm.sh/ready=true --overwrite
+
+          # Inventory Service
+          echo "Starting Inventory Service..."
+          kubectl annotate deployment inventory-service dependencies.helm.sh/ready=true --overwrite
+
+          # Notification Service
+          echo "Starting Notification Service..."
+          kubectl annotate deployment notification-service dependencies.helm.sh/ready=true --overwrite
+
+          # Analytics Service
+          echo "Starting Analytics Service..."
+          kubectl annotate deployment analytics-service dependencies.helm.sh/ready=true --overwrite
+
+          echo "Dependency Controller completed successfully"
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: dependency-controller
+  namespace: {{ .Values.global.namespace }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: dependency-controller
+  namespace: {{ .Values.global.namespace }}
+rules:
+- apiGroups: ["batch"]
+  resources: ["jobs"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+- apiGroups: ["apps"]
+  resources: ["deployments"]
+  verbs: ["get", "list", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: dependency-controller
+  namespace: {{ .Values.global.namespace }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: dependency-controller
+subjects:
+- kind: ServiceAccount
+  name: dependency-controller
+  namespace: {{ .Values.global.namespace }}
+{{- end }}

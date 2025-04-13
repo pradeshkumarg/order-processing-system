@@ -1,0 +1,135 @@
+{{- if .Values.dependencies.enabled }}
+# Zookeeper Readiness Check
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: zookeeper-ready
+  namespace: {{ .Values.global.namespace }}
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-weight": "-5"
+    "helm.sh/hook-delete-policy": hook-succeeded,before-hook-creation
+  labels:
+    app.kubernetes.io/name: {{ .Chart.Name }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+spec:
+  ttlSecondsAfterFinished: 10
+  template:
+    metadata:
+      name: zookeeper-ready
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: zookeeper-ready
+        image: busybox:1.28
+        command: ['sh', '-c', 'until nc -z zookeeper 2181; do echo waiting for zookeeper; sleep 2; done; echo zookeeper is ready']
+---
+# Kafka Readiness Check
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: kafka-ready
+  namespace: {{ .Values.global.namespace }}
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-weight": "-4"
+    "helm.sh/hook-delete-policy": hook-succeeded,before-hook-creation
+    "helm.sh/hook-requires": "zookeeper-ready"
+  labels:
+    app.kubernetes.io/name: {{ .Chart.Name }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+spec:
+  ttlSecondsAfterFinished: 10
+  template:
+    metadata:
+      name: kafka-ready
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: kafka-ready
+        image: busybox:1.28
+        command: ['sh', '-c', 'until nc -z kafka 29092; do echo waiting for kafka; sleep 2; done; echo kafka is ready']
+---
+# Postgres Readiness Check
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: postgres-ready
+  namespace: {{ .Values.global.namespace }}
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-weight": "-4"
+    "helm.sh/hook-delete-policy": hook-succeeded,before-hook-creation
+  labels:
+    app.kubernetes.io/name: {{ .Chart.Name }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+spec:
+  ttlSecondsAfterFinished: 10
+  template:
+    metadata:
+      name: postgres-ready
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: postgres-ready
+        image: busybox:1.28
+        command: ['sh', '-c', 'until nc -z postgres 5432; do echo waiting for postgres; sleep 2; done; echo postgres is ready']
+---
+# Database Initialization Check
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: db-init-ready
+  namespace: {{ .Values.global.namespace }}
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-weight": "-3"
+    "helm.sh/hook-delete-policy": hook-succeeded,before-hook-creation
+    "helm.sh/hook-requires": "postgres-ready"
+  labels:
+    app.kubernetes.io/name: {{ .Chart.Name }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+spec:
+  ttlSecondsAfterFinished: 10
+  template:
+    metadata:
+      name: db-init-ready
+    spec:
+      serviceAccountName: dependency-controller
+      restartPolicy: Never
+      containers:
+      - name: db-init-ready
+        image: bitnami/kubectl:latest
+        command: ['sh', '-c', 'timeout=60; count=0; until kubectl get job db-init-job -n {{ .Values.global.namespace }} -o jsonpath="{.status.succeeded}" | grep 1 || [ $count -ge $timeout ]; do echo waiting for database initialization; sleep 2; count=$((count+2)); done; if [ $count -ge $timeout ]; then echo "Timed out waiting for db-init-job to complete"; exit 0; else echo "database initialization completed"; fi']
+---
+# Infrastructure Ready Check
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: infrastructure-ready
+  namespace: {{ .Values.global.namespace }}
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-weight": "-2"
+    "helm.sh/hook-delete-policy": hook-succeeded,before-hook-creation
+    "helm.sh/hook-requires": "kafka-ready,db-init-ready"
+  labels:
+    app.kubernetes.io/name: {{ .Chart.Name }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+spec:
+  ttlSecondsAfterFinished: 10
+  template:
+    metadata:
+      name: infrastructure-ready
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: infrastructure-ready
+        image: busybox:1.28
+        command: ['sh', '-c', 'echo "All infrastructure services are ready"']
+{{- end }}

@@ -25,7 +25,8 @@ Each service includes:
 - Java 17
 - Maven
 - Docker and Docker Compose
-- Kubernetes cluster (optional, for Kubernetes deployment)
+- Kubernetes cluster
+- Helm 3.2.0+ (for Kubernetes deployment)
 
 ## Building the Project
 
@@ -39,11 +40,15 @@ mvn clean package -DskipTests
 
 ### 1. Start All Services
 
-Start all services (infrastructure and application):
+Deploy all services using Helm:
 
 ```bash
 ./scripts/start-all-services.sh
 ```
+
+This script uses Helm to deploy the entire application stack to Kubernetes.
+
+**Note**: In a development environment, the application service pods (order-service, inventory-service, etc.) may not reach the 'Ready' state because the Docker images are not available. This is expected. In a production environment, you would need to build and push the service images to a registry first. See [helm-charts/order-processing-system/README.md](helm-charts/order-processing-system/README.md) for details.
 
 ### 2. Run Services Locally (Alternative)
 
@@ -132,11 +137,13 @@ curl http://localhost:8082/api/inventory
 
 ### 4. Stopping the Application
 
-Stop the infrastructure services:
+Uninstall all services using Helm:
 
 ```bash
-./stop-infrastructure.sh
+./scripts/stop-all-services.sh
 ```
+
+This script uses Helm to uninstall the entire application stack from Kubernetes.
 
 ## Kafka Topics
 
@@ -236,16 +243,31 @@ After running the tests with coverage, you can view the coverage reports by open
 
 ## Kubernetes Deployment
 
-This project can also be deployed to a Kubernetes cluster. For detailed instructions, see [kubernetes/README.md](kubernetes/README.md).
+This project is deployed to a Kubernetes cluster using Helm. For detailed instructions, see [helm-charts/order-processing-system/README.md](helm-charts/order-processing-system/README.md).
 
 ### Quick Start
 
 ```bash
-# Start all services in Kubernetes
+# Deploy all services using Helm
 ./scripts/start-all-services.sh
 
-# Stop all services in Kubernetes
+# Uninstall all services using Helm
 ./scripts/stop-all-services.sh
+```
+
+### Manual Helm Commands
+
+You can also use Helm commands directly:
+
+```bash
+# Install or upgrade the Helm chart
+helm upgrade --install order-processing ./helm-charts/order-processing-system
+
+# Customize values during installation
+helm upgrade --install order-processing ./helm-charts/order-processing-system --set services.orderService.replicas=2
+
+# Uninstall the Helm chart
+helm uninstall order-processing
 ```
 
 ## Future Enhancements

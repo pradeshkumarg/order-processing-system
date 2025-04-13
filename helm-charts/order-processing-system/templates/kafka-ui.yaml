@@ -1,0 +1,65 @@
+{{- if .Values.infrastructure.kafkaUI.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kafka-ui
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: kafka-ui
+    app.kubernetes.io/name: {{ .Chart.Name }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+  annotations:
+    "dependencies.helm.sh/requires": "kafka-ready"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kafka-ui
+  template:
+    metadata:
+      labels:
+        app: kafka-ui
+    spec:
+      {{- with .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      initContainers:
+        - name: wait-for-kafka
+          image: busybox:1.28
+          command: ['sh', '-c', 'until nc -z kafka 29092; do echo waiting for kafka; sleep 2; done;']
+      containers:
+        - name: kafka-ui
+          image: "{{ .Values.infrastructure.kafkaUI.image.repository }}:{{ .Values.infrastructure.kafkaUI.image.tag }}"
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          ports:
+            - containerPort: 8080
+          env:
+            - name: KAFKA_CLUSTERS_0_NAME
+              value: "{{ .Values.infrastructure.kafkaUI.env.KAFKA_CLUSTERS_0_NAME }}"
+            - name: KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS
+              value: "{{ .Values.infrastructure.kafkaUI.env.KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS }}"
+            - name: KAFKA_CLUSTERS_0_ZOOKEEPER
+              value: "{{ .Values.infrastructure.kafkaUI.env.KAFKA_CLUSTERS_0_ZOOKEEPER }}"
+          resources:
+            {{- toYaml .Values.infrastructure.kafkaUI.resources | nindent 12 }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kafka-ui
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: kafka-ui
+    app.kubernetes.io/name: {{ .Chart.Name }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+spec:
+  selector:
+    app: kafka-ui
+  ports:
+    - port: {{ .Values.infrastructure.kafkaUI.service.port }}
+      targetPort: 8080
+  type: {{ .Values.infrastructure.kafkaUI.service.type }}
+{{- end }}

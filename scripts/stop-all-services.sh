@@ -1,18 +1,36 @@
 #!/bin/bash
 
-echo "Stopping all services in Kubernetes..."
+echo "Stopping all services in Kubernetes using Helm..."
 
-# Delete application services first
-echo "Stopping application services..."
-kubectl delete -f kubernetes/services/order-service.yaml --ignore-not-found
-kubectl delete -f kubernetes/services/inventory-service.yaml --ignore-not-found
-kubectl delete -f kubernetes/services/notification-service.yaml --ignore-not-found
-kubectl delete -f kubernetes/services/analytics-service.yaml --ignore-not-found
+# Check if Helm is installed
+if ! command -v helm &> /dev/null; then
+    echo "Error: Helm is not installed. Please install Helm first."
+    exit 1
+fi
 
-# Delete infrastructure resources
-echo "Stopping infrastructure services..."
-kubectl delete -f kubernetes/infrastructure/postgres.yaml --ignore-not-found
-kubectl delete -f kubernetes/infrastructure/kafka.yaml --ignore-not-found
-kubectl delete -f kubernetes/infrastructure/zookeeper.yaml --ignore-not-found
+# Check if the namespace exists
+if kubectl get namespace order-processing-system &> /dev/null; then
+    # Check if the release exists
+    if helm status order-processing -n order-processing-system &> /dev/null; then
+        # Uninstall the Helm release
+        echo "Uninstalling the Order Processing System Helm chart..."
+        helm uninstall order-processing -n order-processing-system
 
-echo "All services stopped!"
+        echo "Checking for remaining resources..."
+    else
+        echo "The Order Processing System Helm release is not found, but the namespace exists."
+        echo "Cleaning up any resources in the namespace..."
+    fi
+
+    # Check if any pods are still running
+    echo "Checking if any pods are still running..."
+    kubectl get pods -n order-processing-system
+
+    # Delete the namespace
+    echo "Deleting the namespace..."
+    kubectl delete namespace order-processing-system --ignore-not-found
+
+    echo "All services have been stopped!"
+else
+    echo "The Order Processing System namespace does not exist. Nothing to stop."
+fi

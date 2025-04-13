@@ -1,0 +1,96 @@
+{{- if .Values.services.analyticsService.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: analytics-service
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: analytics-service
+    app.kubernetes.io/name: {{ .Chart.Name }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+  annotations:
+    "dependencies.helm.sh/requires": "infrastructure-ready"
+spec:
+  replicas: {{ .Values.services.analyticsService.replicas }}
+  selector:
+    matchLabels:
+      app: analytics-service
+  template:
+    metadata:
+      labels:
+        app: analytics-service
+    spec:
+      {{- with .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      initContainers:
+        - name: wait-for-kafka
+          image: busybox:1.28
+          command: ['sh', '-c', 'until nc -z kafka 29092; do echo waiting for kafka; sleep 2; done;']
+        - name: wait-for-postgres
+          image: busybox:1.28
+          command: ['sh', '-c', 'until nc -z postgres 5432; do echo waiting for postgres; sleep 2; done;']
+      containers:
+        - name: analytics-service
+          image: "{{ .Values.global.imageRegistry }}/{{ .Values.services.analyticsService.image.repository }}:{{ .Values.services.analyticsService.image.tag }}"
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          ports:
+            - containerPort: 8084
+          env:
+            - name: SPRING_DATASOURCE_URL
+              value: "{{ .Values.services.analyticsService.env.SPRING_DATASOURCE_URL }}"
+            - name: SPRING_DATASOURCE_USERNAME
+              value: "{{ .Values.services.analyticsService.env.SPRING_DATASOURCE_USERNAME }}"
+            - name: SPRING_DATASOURCE_PASSWORD
+              value: "{{ .Values.services.analyticsService.env.SPRING_DATASOURCE_PASSWORD }}"
+            - name: SPRING_KAFKA_BOOTSTRAP_SERVERS
+              value: "{{ .Values.services.analyticsService.env.SPRING_KAFKA_BOOTSTRAP_SERVERS }}"
+            - name: SPRING_KAFKA_CONSUMER_GROUP_ID
+              value: "{{ .Values.services.analyticsService.env.SPRING_KAFKA_CONSUMER_GROUP_ID }}"
+            - name: SPRING_KAFKA_CONSUMER_AUTO_OFFSET_RESET
+              value: "{{ .Values.services.analyticsService.env.SPRING_KAFKA_CONSUMER_AUTO_OFFSET_RESET }}"
+            - name: JAVA_TOOL_OPTIONS
+              value: "{{ .Values.services.analyticsService.env.JAVA_TOOL_OPTIONS }}"
+            - name: SPRING_MAIN_LAZY_INITIALIZATION
+              value: "{{ .Values.services.analyticsService.env.SPRING_MAIN_LAZY_INITIALIZATION }}"
+            - name: SPRING_MAIN_BANNER_MODE
+              value: "{{ .Values.services.analyticsService.env.SPRING_MAIN_BANNER_MODE }}"
+          resources:
+            {{- toYaml .Values.services.analyticsService.resources | nindent 12 }}
+          startupProbe:
+            tcpSocket:
+              port: 8084
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            failureThreshold: 60
+          readinessProbe:
+            tcpSocket:
+              port: 8084
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          livenessProbe:
+            tcpSocket:
+              port: 8084
+            initialDelaySeconds: 20
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: analytics-service
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: analytics-service
+    app.kubernetes.io/name: {{ .Chart.Name }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+spec:
+  selector:
+    app: analytics-service
+  ports:
+    - port: {{ .Values.services.analyticsService.service.port }}
+      targetPort: 8084
+  type: {{ .Values.services.analyticsService.service.type }}
+{{- end }}

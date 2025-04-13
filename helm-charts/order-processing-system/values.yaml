@@ -1,0 +1,222 @@
+# Default values for order-processing-system
+# This is a YAML-formatted file.
+
+# Global settings
+global:
+  namespace: order-processing-system
+  createNamespace: true
+  imageRegistry: "localhost:5001"  # Local registry
+  imagePullPolicy: IfNotPresent
+  imagePullSecrets: []
+
+# Dependencies configuration
+dependencies:
+  enabled: true  # Enable dependency management
+
+# Infrastructure services
+infrastructure:
+  # Zookeeper configuration
+  zookeeper:
+    enabled: true
+    image:
+      repository: confluentinc/cp-zookeeper
+      tag: "7.3.0"
+    resources:
+      limits:
+        memory: "512Mi"
+        cpu: "500m"
+      requests:
+        memory: "256Mi"
+        cpu: "250m"
+    service:
+      type: ClusterIP
+      port: 2181
+
+  # Kafka configuration
+  kafka:
+    enabled: true
+    image:
+      repository: confluentinc/cp-kafka
+      tag: "7.3.0"
+    resources:
+      limits:
+        memory: "1Gi"
+        cpu: "1000m"
+      requests:
+        memory: "512Mi"
+        cpu: "500m"
+    service:
+      type: ClusterIP
+      ports:
+        - name: external
+          port: 9092
+          targetPort: 9092
+        - name: internal
+          port: 29092
+          targetPort: 29092
+    env:
+      KAFKA_BROKER_ID: "1"
+      KAFKA_ZOOKEEPER_CONNECT: "zookeeper:2181"
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: "PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT"
+      KAFKA_ADVERTISED_LISTENERS: "PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092"
+      KAFKA_LISTENERS: "PLAINTEXT://0.0.0.0:29092,PLAINTEXT_HOST://0.0.0.0:9092"
+      KAFKA_INTER_BROKER_LISTENER_NAME: "PLAINTEXT"
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: "1"
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: "1"
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: "1"
+      KAFKA_PORT: ""
+
+  # Kafka UI configuration
+  kafkaUI:
+    enabled: true
+    image:
+      repository: provectuslabs/kafka-ui
+      tag: "latest"
+    resources:
+      limits:
+        memory: "512Mi"
+        cpu: "500m"
+      requests:
+        memory: "256Mi"
+        cpu: "250m"
+    service:
+      type: ClusterIP
+      port: 8080
+    env:
+      KAFKA_CLUSTERS_0_NAME: "local"
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: "kafka:29092"
+      KAFKA_CLUSTERS_0_ZOOKEEPER: "zookeeper:2181"
+
+  # PostgreSQL configuration
+  postgres:
+    enabled: true
+    image:
+      repository: postgres
+      tag: "latest"
+    resources:
+      limits:
+        memory: "1Gi"
+        cpu: "1000m"
+      requests:
+        memory: "512Mi"
+        cpu: "500m"
+    service:
+      type: ClusterIP
+      port: 5432
+    env:
+      POSTGRES_USER: "user"
+      POSTGRES_PASSWORD: "password"
+      POSTGRES_DB: "ecommerce"
+    persistence:
+      enabled: true
+      size: "1Gi"
+      storageClass: ""
+
+# Application services
+services:
+  # Order Service configuration
+  orderService:
+    enabled: true
+    image:
+      repository: order-service
+      tag: "latest"
+    replicas: 1
+    resources:
+      limits:
+        memory: "512Mi"
+        cpu: "500m"
+      requests:
+        memory: "256Mi"
+        cpu: "250m"
+    service:
+      type: ClusterIP
+      port: 8081
+    env:
+      SPRING_DATASOURCE_URL: "jdbc:postgresql://postgres:5432/ecommerce"
+      SPRING_DATASOURCE_USERNAME: "user"
+      SPRING_DATASOURCE_PASSWORD: "password"
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: "kafka:29092"
+      JAVA_TOOL_OPTIONS: "-XX:+TieredCompilation -XX:TieredStopAtLevel=1 -XX:+UseParallelGC -Djava.security.egd=file:/dev/./urandom"
+      SPRING_MAIN_LAZY_INITIALIZATION: "true"
+      SPRING_MAIN_BANNER_MODE: "off"
+
+  # Inventory Service configuration
+  inventoryService:
+    enabled: true
+    image:
+      repository: inventory-service
+      tag: "latest"
+    replicas: 1
+    resources:
+      limits:
+        memory: "512Mi"
+        cpu: "500m"
+      requests:
+        memory: "256Mi"
+        cpu: "250m"
+    service:
+      type: ClusterIP
+      port: 8082
+    env:
+      SPRING_DATASOURCE_URL: "jdbc:postgresql://postgres:5432/ecommerce"
+      SPRING_DATASOURCE_USERNAME: "user"
+      SPRING_DATASOURCE_PASSWORD: "password"
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: "kafka:29092"
+      SPRING_KAFKA_CONSUMER_GROUP_ID: "inventory-group"
+      SPRING_KAFKA_CONSUMER_AUTO_OFFSET_RESET: "earliest"
+      JAVA_TOOL_OPTIONS: "-XX:+TieredCompilation -XX:TieredStopAtLevel=1 -XX:+UseParallelGC -Djava.security.egd=file:/dev/./urandom"
+      SPRING_MAIN_LAZY_INITIALIZATION: "true"
+      SPRING_MAIN_BANNER_MODE: "off"
+
+  # Notification Service configuration
+  notificationService:
+    enabled: true
+    image:
+      repository: notification-service
+      tag: "latest"
+    replicas: 1
+    resources:
+      limits:
+        memory: "512Mi"
+        cpu: "500m"
+      requests:
+        memory: "256Mi"
+        cpu: "250m"
+    service:
+      type: ClusterIP
+      port: 8083
+    env:
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: "kafka:29092"
+      SPRING_KAFKA_CONSUMER_GROUP_ID: "notification-service-group"
+      SPRING_KAFKA_CONSUMER_AUTO_OFFSET_RESET: "earliest"
+      JAVA_TOOL_OPTIONS: "-XX:+TieredCompilation -XX:TieredStopAtLevel=1 -XX:+UseParallelGC -Djava.security.egd=file:/dev/./urandom"
+      SPRING_MAIN_LAZY_INITIALIZATION: "true"
+      SPRING_MAIN_BANNER_MODE: "off"
+
+  # Analytics Service configuration
+  analyticsService:
+    enabled: true
+    image:
+      repository: analytics-service
+      tag: "latest"
+    replicas: 1
+    resources:
+      limits:
+        memory: "512Mi"
+        cpu: "500m"
+      requests:
+        memory: "256Mi"
+        cpu: "250m"
+    service:
+      type: ClusterIP
+      port: 8084
+    env:
+      SPRING_DATASOURCE_URL: "jdbc:postgresql://postgres:5432/ecommerce"
+      SPRING_DATASOURCE_USERNAME: "user"
+      SPRING_DATASOURCE_PASSWORD: "password"
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: "kafka:29092"
+      SPRING_KAFKA_CONSUMER_GROUP_ID: "analytics-group"
+      SPRING_KAFKA_CONSUMER_AUTO_OFFSET_RESET: "earliest"
+      JAVA_TOOL_OPTIONS: "-XX:+TieredCompilation -XX:TieredStopAtLevel=1 -XX:+UseParallelGC -Djava.security.egd=file:/dev/./urandom"
+      SPRING_MAIN_LAZY_INITIALIZATION: "true"
+      SPRING_MAIN_BANNER_MODE: "off"

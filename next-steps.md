@@ -38,7 +38,11 @@ If you'd like to further enhance the application, you might consider:
 
 21. **Adding Monitoring**: Implement metrics and health checks for better observability.
 22. **Distributed Tracing**: Add distributed tracing to track requests across services.
-23. **Centralized Logging**: Implement centralized logging for easier troubleshooting.
+23. **Centralized Logging**: Implement centralized logging for easier troubleshooting. Recommended options:
+    - **Loki + Grafana + Promtail**: Lightweight, Kubernetes-native logging stack with low resource requirements
+    - **ELK Stack**: Powerful but resource-intensive logging solution with advanced search capabilities
+    - **Fluent Bit + Prometheus + Grafana**: Flexible logging pipeline that integrates well with metrics
+    - **OpenSearch + Fluent Bit**: Open source alternative to ELK with similar capabilities
 24. **Alerting**: Set up alerts for critical issues.
 25. **Dashboard**: Create dashboards for monitoring system health.
 
@@ -49,7 +53,12 @@ If you'd like to further enhance the application, you might consider:
 28. **CI/CD Pipeline**: Set up a CI/CD pipeline for automated testing and deployment.
 29. **Infrastructure as Code**: Use tools like Terraform to manage infrastructure.
 30. **Feature Flags**: Implement feature flags for safer deployments.
-31. **Helm Charts**: Create Helm charts for easier Kubernetes deployments.
+31. **Helm Charts**: Create Helm charts for easier Kubernetes deployments. Benefits include:
+    - **Simplified Deployment**: Package all Kubernetes resources together
+    - **Environment Configuration**: Use values files for different environments
+    - **Dependency Management**: Manage dependencies between services
+    - **Versioning**: Version control your deployments
+    - **Rollbacks**: Easy rollback to previous versions
 32. **Service Mesh**: Implement a service mesh like Istio for advanced traffic management.
 33. **Kubernetes Operators**: Develop custom operators for application-specific operations.
 34. **Horizontal Pod Autoscaling**: Configure HPA for automatic scaling based on metrics.
