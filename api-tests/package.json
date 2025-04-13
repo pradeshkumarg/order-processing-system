@@ -1,0 +1,14 @@
+{
+  "name": "k8s-api-tests",
+  "version": "1.0.0",
+  "description": "Kubernetes API Tests for Order Processing System",
+  "main": "k8s-tests.test.js",
+  "scripts": {
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:fast": "jest --testTimeout=5000"
+  },
+  "devDependencies": {
+    "jest": "^29.5.0"
+  }
+}
