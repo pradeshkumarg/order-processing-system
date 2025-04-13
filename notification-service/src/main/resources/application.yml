@@ -1,0 +1,44 @@
+server:
+  port: 8083
+
+spring:
+  application:
+    name: notification-service
+
+  kafka:
+    bootstrap-servers: localhost:9092
+    consumer:
+      group-id: notification-service-group
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: com.pradesh.common.event
+      enable-auto-commit: false
+      max-poll-records: 10
+      max-poll-interval-ms: 300000
+    listener:
+      ack-mode: manual_immediate
+      concurrency: 3
+      type: batch
+      missing-topics-fatal: false
+
+kafka:
+  topics:
+    inventory-updated: inventory-updated
+    inventory-failed: inventory-failed
+
+logging:
+  level:
+    com.pradesh.notificationservice: INFO
+    org.springframework.kafka: WARN
+
+# Swagger/OpenAPI Configuration
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui
+    operationsSorter: method
+    tagsSorter: alpha
+    filter: true

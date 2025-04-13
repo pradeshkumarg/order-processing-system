@@ -1,0 +1,26 @@
+spring:
+  kafka:
+    bootstrap-servers: localhost:9092
+    consumer:
+      group-id: notification-service-test-group
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: com.pradesh.common.event
+      enable-auto-commit: false
+    listener:
+      ack-mode: manual_immediate
+      concurrency: 1
+      type: single
+      missing-topics-fatal: false
+
+kafka:
+  topics:
+    inventory-updated: inventory-updated-test
+    inventory-failed: inventory-failed-test
+
+logging:
+  level:
+    com.pradesh.notificationservice: DEBUG
+    org.springframework.kafka: DEBUG 
