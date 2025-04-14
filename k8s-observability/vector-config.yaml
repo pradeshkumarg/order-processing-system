@@ -1,0 +1,53 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: vector-config
+  namespace: observability
+data:
+  vector.toml: |
+    [sources.kubernetes_logs]
+    type = "kubernetes_logs"
+    self_node_name = "${HOSTNAME}"
+    data_dir = "/vector-data"
+    
+    [transforms.remap_logs]
+    type = "remap"
+    inputs = ["kubernetes_logs"]
+    source = '''
+    # Create a simple timestamp in the format ClickHouse expects
+    .timestamp = format_timestamp!(now(), "%Y-%m-%d %H:%M:%S")
+    
+    # Extract Kubernetes metadata
+    .namespace = .kubernetes.namespace_name
+    .pod_name = .kubernetes.pod_name
+    .container_name = .kubernetes.container_name
+    
+    # Set default values for other fields
+    .level = "INFO"
+    .app = "unknown"
+    if exists(.kubernetes.labels.app) {
+      .app = .kubernetes.labels.app
+    }
+    
+    .service = "unknown"
+    if exists(.kubernetes.labels.service) {
+      .service = .kubernetes.labels.service
+    }
+    
+    .host = "unknown"
+    if exists(.kubernetes.host) {
+      .host = .kubernetes.host
+    }
+    
+    # Keep the original message
+    .raw_message = .message
+    '''
+    
+    [sinks.clickhouse_logs]
+    type = "clickhouse"
+    inputs = ["remap_logs"]
+    database = "logs"
+    table = "logs"
+    endpoint = "http://clickhouse:8123"
+    compression = "none"
+    skip_unknown_fields = true

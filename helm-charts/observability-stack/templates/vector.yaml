@@ -1,0 +1,151 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: vector-config
+  namespace: {{ .Values.namespace }}
+data:
+  vector.toml: |
+    [sources.kubernetes_logs]
+    type = "kubernetes_logs"
+    self_node_name = "${HOSTNAME}"
+    data_dir = "/vector-data"
+
+    [transforms.remap_logs]
+    type = "remap"
+    inputs = ["kubernetes_logs"]
+    source = '''
+    # Create a simple timestamp in the format ClickHouse expects
+    .timestamp = format_timestamp!(now(), "%Y-%m-%d %H:%M:%S")
+
+    # Extract Kubernetes metadata
+    .namespace = .kubernetes.namespace_name
+    .pod_name = .kubernetes.pod_name
+    .container_name = .kubernetes.container_name
+
+    # Set default values for other fields
+    .level = "INFO"
+    .app = "unknown"
+    if exists(.kubernetes.labels.app) {
+      .app = .kubernetes.labels.app
+    }
+
+    .service = "unknown"
+    if exists(.kubernetes.labels.service) {
+      .service = .kubernetes.labels.service
+    }
+
+    .host = "unknown"
+    if exists(.kubernetes.host) {
+      .host = .kubernetes.host
+    }
+
+    # Keep the original message
+    .raw_message = .message
+    '''
+
+    [sinks.clickhouse_logs]
+    type = "clickhouse"
+    inputs = ["remap_logs"]
+    database = "logs"
+    table = "logs"
+    endpoint = "http://clickhouse:8123"
+    compression = "none"
+    skip_unknown_fields = true
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: vector
+  namespace: {{ .Values.namespace }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: vector
+rules:
+  - apiGroups: [""]
+    resources:
+      - pods
+      - namespaces
+    verbs: ["list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: vector
+subjects:
+  - kind: ServiceAccount
+    name: vector
+    namespace: {{ .Values.namespace }}
+roleRef:
+  kind: ClusterRole
+  name: vector
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: vector
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: vector
+spec:
+  selector:
+    matchLabels:
+      app: vector
+  template:
+    metadata:
+      labels:
+        app: vector
+    spec:
+      serviceAccountName: vector
+      initContainers:
+      - name: wait-for-clickhouse
+        image: busybox:1.28
+        command: ['sh', '-c', '{{ template "observability-stack.clickhouse.readinessCheck" . }}']
+      containers:
+      - name: vector
+        image: {{ .Values.vector.image }}
+        env:
+        - name: VECTOR_SELF_NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        - name: VECTOR_SELF_POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: VECTOR_SELF_POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        ports:
+        - containerPort: 8686
+          name: http
+        volumeMounts:
+        - name: var-log
+          mountPath: /var/log/
+          readOnly: true
+        - name: var-lib
+          mountPath: /var/lib/
+          readOnly: true
+        - name: vector-config
+          mountPath: /etc/vector/
+          readOnly: true
+        - name: vector-data
+          mountPath: /vector-data
+        resources:
+{{ toYaml .Values.vector.resources | indent 10 }}
+      volumes:
+      - name: var-log
+        hostPath:
+          path: /var/log/
+      - name: var-lib
+        hostPath:
+          path: /var/lib/
+      - name: vector-config
+        configMap:
+          name: vector-config
+      - name: vector-data
+        emptyDir: {}

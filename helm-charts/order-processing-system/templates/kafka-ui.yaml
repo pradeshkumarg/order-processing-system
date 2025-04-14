@@ -28,7 +28,7 @@ spec:
       initContainers:
         - name: wait-for-kafka
           image: busybox:1.28
-          command: ['sh', '-c', 'until nc -z kafka 29092; do echo waiting for kafka; sleep 1; done;']
+          command: ['sh', '-c', '{{ template "order-processing-system.kafka.readinessCheck" . }}']
       containers:
         - name: kafka-ui
           image: "{{ .Values.infrastructure.kafkaUI.image.repository }}:{{ .Values.infrastructure.kafkaUI.image.tag }}"

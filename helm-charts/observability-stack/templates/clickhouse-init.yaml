@@ -1,0 +1,28 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: clickhouse-init
+  namespace: {{ .Values.namespace }}
+  annotations:
+    "helm.sh/hook": post-install
+    "helm.sh/hook-weight": "0"
+    "helm.sh/hook-delete-policy": hook-succeeded
+spec:
+  ttlSecondsAfterFinished: 10
+  template:
+    spec:
+      initContainers:
+      - name: wait-for-clickhouse
+        image: busybox:1.28
+        command: ['sh', '-c', '{{ template "observability-stack.clickhouse.readinessCheck" . }}']
+      containers:
+      - name: clickhouse-init
+        image: clickhouse/clickhouse-client:latest
+        command:
+        - /bin/sh
+        - -c
+        - |
+          clickhouse-client --host clickhouse --query "CREATE DATABASE IF NOT EXISTS logs"
+          clickhouse-client --host clickhouse --query "CREATE TABLE IF NOT EXISTS logs.logs (timestamp DateTime, namespace String, pod_name String, container_name String, level String, message String, app String, host String, service String, raw_message String) ENGINE = MergeTree() PARTITION BY toYYYYMM(timestamp) ORDER BY (timestamp, namespace, pod_name, container_name)"
+      restartPolicy: Never
+  backoffLimit: 4

@@ -1,0 +1,19 @@
+Thank you for installing {{ .Chart.Name }}.
+
+Your observability stack has been deployed to the {{ .Values.namespace }} namespace.
+
+To access Grafana:
+  1. Run the following command to set up port forwarding:
+     kubectl port-forward svc/grafana -n {{ .Values.namespace }} 3000:3000
+
+  2. Open your browser and navigate to:
+     http://localhost:3000
+
+  3. Log in with the following credentials:
+     Username: {{ .Values.grafana.admin.user }}
+     Password: {{ .Values.grafana.admin.password }}
+
+  4. Navigate to the "Service Logs Dashboard" to view logs from all services.
+
+To check if logs are being collected:
+  kubectl exec -n {{ .Values.namespace }} $(kubectl get pods -n {{ .Values.namespace }} -l app=clickhouse -o name | head -1) -- clickhouse-client -q "SELECT count() FROM logs.logs"

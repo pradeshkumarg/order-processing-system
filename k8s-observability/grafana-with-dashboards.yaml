@@ -1,0 +1,323 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-datasources
+  namespace: observability
+data:
+  datasources.yaml: |
+    apiVersion: 1
+    datasources:
+    - name: ClickHouse
+      type: grafana-clickhouse-datasource
+      url: http://clickhouse.observability.svc.cluster.local:8123
+      access: proxy
+      basicAuth: false
+      withCredentials: false
+      isDefault: true
+      jsonData:
+        defaultDatabase: logs
+        defaultTable: logs
+        server: clickhouse.observability.svc.cluster.local
+        port: 8123
+        username: default
+        protocol: http
+        tlsSkipVerify: true
+      version: 1
+      editable: true
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-provisioning
+  namespace: observability
+data:
+  dashboards.yaml: |
+    apiVersion: 1
+    providers:
+    - name: 'default'
+      orgId: 1
+      folder: ''
+      type: file
+      disableDeletion: false
+      editable: true
+      options:
+        path: /var/lib/grafana/dashboards
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboards
+  namespace: observability
+  labels:
+    grafana_dashboard: "1"
+data:
+  service-logs-dashboard.json: |
+    {
+      "annotations": {
+        "list": [
+          {
+            "builtIn": 1,
+            "datasource": {
+              "type": "grafana",
+              "uid": "-- Grafana --"
+            },
+            "enable": true,
+            "hide": true,
+            "iconColor": "rgba(0, 211, 255, 1)",
+            "name": "Annotations & Alerts",
+            "type": "dashboard"
+          }
+        ]
+      },
+      "editable": true,
+      "fiscalYearStartMonth": 0,
+      "graphTooltip": 0,
+      "id": null,
+      "links": [],
+      "liveNow": false,
+      "panels": [
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "ClickHouse"
+          },
+          "gridPos": {
+            "h": 11,
+            "w": 24,
+            "x": 0,
+            "y": 0
+          },
+          "id": 1,
+          "options": {
+            "dedupStrategy": "none",
+            "enableLogDetails": true,
+            "prettifyLogMessage": false,
+            "showCommonLabels": false,
+            "showLabels": false,
+            "showTime": false,
+            "sortOrder": "Descending",
+            "wrapLogMessage": false
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "grafana-clickhouse-datasource",
+                "uid": "ClickHouse"
+              },
+              "editorType": "sql",
+              "format": 2,
+              "queryType": "logs",
+              "rawSql": "SELECT timestamp, message as \"body\", raw_message as \"level\", message as \"labels\", message, pod_name, service FROM \"logs\".\"logs\" WHERE ( timestamp >= $__fromTime AND timestamp <= $__toTime ) AND ( container_name = 'inventory-service' ) ORDER BY timestamp DESC LIMIT 1000",
+              "refId": "A"
+            }
+          ],
+          "title": "Inventory Service Logs",
+          "type": "logs"
+        },
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "ClickHouse"
+          },
+          "gridPos": {
+            "h": 11,
+            "w": 24,
+            "x": 0,
+            "y": 11
+          },
+          "id": 2,
+          "options": {
+            "dedupStrategy": "none",
+            "enableLogDetails": true,
+            "prettifyLogMessage": false,
+            "showCommonLabels": false,
+            "showLabels": false,
+            "showTime": false,
+            "sortOrder": "Descending",
+            "wrapLogMessage": false
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "grafana-clickhouse-datasource",
+                "uid": "ClickHouse"
+              },
+              "editorType": "sql",
+              "format": 2,
+              "queryType": "logs",
+              "rawSql": "SELECT timestamp, message as \"body\", raw_message as \"level\", message as \"labels\", message, pod_name, service FROM \"logs\".\"logs\" WHERE ( timestamp >= $__fromTime AND timestamp <= $__toTime ) AND ( container_name = 'order-service' ) ORDER BY timestamp DESC LIMIT 1000",
+              "refId": "A"
+            }
+          ],
+          "title": "Order Service Logs",
+          "type": "logs"
+        },
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "ClickHouse"
+          },
+          "gridPos": {
+            "h": 11,
+            "w": 24,
+            "x": 0,
+            "y": 22
+          },
+          "id": 3,
+          "options": {
+            "dedupStrategy": "none",
+            "enableLogDetails": true,
+            "prettifyLogMessage": false,
+            "showCommonLabels": false,
+            "showLabels": false,
+            "showTime": false,
+            "sortOrder": "Descending",
+            "wrapLogMessage": false
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "grafana-clickhouse-datasource",
+                "uid": "ClickHouse"
+              },
+              "editorType": "sql",
+              "format": 2,
+              "queryType": "logs",
+              "rawSql": "SELECT timestamp, message as \"body\", raw_message as \"level\", message as \"labels\", message, pod_name, service FROM \"logs\".\"logs\" WHERE ( timestamp >= $__fromTime AND timestamp <= $__toTime ) AND ( container_name = 'notification-service' ) ORDER BY timestamp DESC LIMIT 1000",
+              "refId": "A"
+            }
+          ],
+          "title": "Notification Service Logs",
+          "type": "logs"
+        },
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "ClickHouse"
+          },
+          "gridPos": {
+            "h": 11,
+            "w": 24,
+            "x": 0,
+            "y": 33
+          },
+          "id": 4,
+          "options": {
+            "dedupStrategy": "none",
+            "enableLogDetails": true,
+            "prettifyLogMessage": false,
+            "showCommonLabels": false,
+            "showLabels": false,
+            "showTime": false,
+            "sortOrder": "Descending",
+            "wrapLogMessage": false
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "grafana-clickhouse-datasource",
+                "uid": "ClickHouse"
+              },
+              "editorType": "sql",
+              "format": 2,
+              "queryType": "logs",
+              "rawSql": "SELECT timestamp, message as \"body\", raw_message as \"level\", message as \"labels\", message, pod_name, service FROM \"logs\".\"logs\" WHERE ( timestamp >= $__fromTime AND timestamp <= $__toTime ) AND ( container_name = 'analytics-service' ) ORDER BY timestamp DESC LIMIT 1000",
+              "refId": "A"
+            }
+          ],
+          "title": "Analytics Service Logs",
+          "type": "logs"
+        }
+      ],
+      "refresh": "",
+      "schemaVersion": 38,
+      "style": "dark",
+      "tags": [],
+      "templating": {
+        "list": []
+      },
+      "time": {
+        "from": "now-6h",
+        "to": "now"
+      },
+      "timepicker": {},
+      "timezone": "",
+      "title": "Service Logs Dashboard",
+      "uid": "service-logs-dashboard",
+      "version": 1,
+      "weekStart": ""
+    }
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: grafana
+  namespace: observability
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: grafana
+  template:
+    metadata:
+      labels:
+        app: grafana
+    spec:
+      containers:
+      - name: grafana
+        image: grafana/grafana:9.5.2
+        ports:
+        - containerPort: 3000
+          name: http
+        env:
+        - name: GF_INSTALL_PLUGINS
+          value: "grafana-clickhouse-datasource"
+        - name: GF_SECURITY_ADMIN_USER
+          value: "admin"
+        - name: GF_SECURITY_ADMIN_PASSWORD
+          value: "admin"
+        volumeMounts:
+        - name: grafana-datasources
+          mountPath: /etc/grafana/provisioning/datasources
+          readOnly: true
+        - name: grafana-dashboard-provisioning
+          mountPath: /etc/grafana/provisioning/dashboards
+          readOnly: true
+        - name: grafana-dashboards
+          mountPath: /var/lib/grafana/dashboards
+          readOnly: true
+        resources:
+          limits:
+            cpu: 500m
+            memory: 512Mi
+          requests:
+            cpu: 100m
+            memory: 128Mi
+      volumes:
+      - name: grafana-datasources
+        configMap:
+          name: grafana-datasources
+      - name: grafana-dashboard-provisioning
+        configMap:
+          name: grafana-dashboard-provisioning
+      - name: grafana-dashboards
+        configMap:
+          name: grafana-dashboards
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: grafana
+  namespace: observability
+spec:
+  ports:
+  - port: 3000
+    targetPort: 3000
+    name: http
+  selector:
+    app: grafana
+  type: ClusterIP
