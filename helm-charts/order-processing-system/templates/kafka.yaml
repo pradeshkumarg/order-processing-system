@@ -28,7 +28,7 @@ spec:
       initContainers:
         - name: wait-for-zookeeper
           image: busybox:1.28
-          command: ['sh', '-c', 'until nc -z zookeeper 2181; do echo waiting for zookeeper; sleep 2; done;']
+          command: ['sh', '-c', 'until nc -z zookeeper 2181; do echo waiting for zookeeper; sleep 1; done;']
       containers:
         - name: kafka
           image: "{{ .Values.infrastructure.kafka.image.repository }}:{{ .Values.infrastructure.kafka.image.tag }}"

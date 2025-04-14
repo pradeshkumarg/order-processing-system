@@ -16,7 +16,7 @@ kubectl delete namespace order-processing-system --ignore-not-found
 echo "Waiting for namespace to be fully deleted..."
 while kubectl get namespace order-processing-system &> /dev/null; do
     echo "Namespace still exists, waiting..."
-    sleep 2
+    sleep 1
 done
 
 # Create namespace

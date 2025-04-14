@@ -23,7 +23,7 @@ spec:
       containers:
       - name: zookeeper-ready
         image: busybox:1.28
-        command: ['sh', '-c', 'until nc -z zookeeper 2181; do echo waiting for zookeeper; sleep 2; done; echo zookeeper is ready']
+        command: ['sh', '-c', 'until nc -z zookeeper 2181; do echo waiting for zookeeper; sleep 1; done; echo zookeeper is ready']
 ---
 # Kafka Readiness Check
 apiVersion: batch/v1
@@ -50,7 +50,7 @@ spec:
       containers:
       - name: kafka-ready
         image: busybox:1.28
-        command: ['sh', '-c', 'until nc -z kafka 29092; do echo waiting for kafka; sleep 2; done; echo kafka is ready']
+        command: ['sh', '-c', 'until nc -z kafka 29092; do echo waiting for kafka; sleep 1; done; echo kafka is ready']
 ---
 # Postgres Readiness Check
 apiVersion: batch/v1
@@ -76,7 +76,7 @@ spec:
       containers:
       - name: postgres-ready
         image: busybox:1.28
-        command: ['sh', '-c', 'until nc -z postgres 5432; do echo waiting for postgres; sleep 2; done; echo postgres is ready']
+        command: ['sh', '-c', 'until nc -z postgres 5432; do echo waiting for postgres; sleep 1; done; echo postgres is ready']
 ---
 # Database Initialization Check
 apiVersion: batch/v1
@@ -104,7 +104,7 @@ spec:
       containers:
       - name: db-init-ready
         image: bitnami/kubectl:latest
-        command: ['sh', '-c', 'timeout=60; count=0; until kubectl get job db-init-job -n {{ .Values.global.namespace }} -o jsonpath="{.status.succeeded}" | grep 1 || [ $count -ge $timeout ]; do echo waiting for database initialization; sleep 2; count=$((count+2)); done; if [ $count -ge $timeout ]; then echo "Timed out waiting for db-init-job to complete"; exit 0; else echo "database initialization completed"; fi']
+        command: ['sh', '-c', 'timeout=30; count=0; until kubectl get job db-init-job -n {{ .Values.global.namespace }} -o jsonpath="{.status.succeeded}" | grep 1 || [ $count -ge $timeout ]; do echo waiting for database initialization; sleep 1; count=$((count+1)); done; if [ $count -ge $timeout ]; then echo "Timed out waiting for db-init-job to complete"; exit 0; else echo "database initialization completed"; fi']
 ---
 # Infrastructure Ready Check
 apiVersion: batch/v1

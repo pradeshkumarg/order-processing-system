@@ -23,7 +23,7 @@ spec:
       initContainers:
         - name: wait-for-postgres
           image: busybox:1.28
-          command: ['sh', '-c', 'until nc -z postgres 5432; do echo waiting for postgres; sleep 2; done; echo postgres is ready']
+          command: ['sh', '-c', 'until nc -z postgres 5432; do echo waiting for postgres; sleep 1; done; echo postgres is ready']
       containers:
         - name: db-init
           image: postgres:13-alpine
